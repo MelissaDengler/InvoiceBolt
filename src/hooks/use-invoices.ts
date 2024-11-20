@@ -171,7 +171,8 @@ export function useInvoices() {
               invoice_id: invoiceData.id,
               description: item.description,
               quantity: item.quantity,
-              rate: item.rate
+              rate: item.rate,
+              // unit_price and amount will be calculated automatically by the database
             }))
           )
 
@@ -190,7 +191,14 @@ export function useInvoices() {
         .select(`
           *,
           customers (*),
-          items:invoice_items(*)
+          items:invoice_items (
+            id,
+            description,
+            quantity,
+            rate,
+            unit_price,
+            amount
+          )
         `)
         .eq('id', invoiceData.id)
         .single()
