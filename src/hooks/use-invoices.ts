@@ -1,124 +1,233 @@
-import { useCallback, useState, useEffect } from 'react'
-import { supabase, subscribeToInvoices } from '../lib/supabase'
-import type { Database } from '../lib/database.types'
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import type { Database } from '@/lib/database.types'
+import type { CreateInvoiceInput, DbInvoice } from '@/types/invoice'
 
-type Invoice = Database['public']['Tables']['invoices']['Row']
-type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
-type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
+interface CustomerData {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+}
 
 export function useInvoices() {
-  const [loading, setLoading] = useState(false)
+  const [invoices, setInvoices] = useState<DbInvoice[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [invoices, setInvoices] = useState<Invoice[]>([])
 
-  // Fetch initial invoices
-  useEffect(() => {
-    fetchInvoices()
-    
-    // Set up real-time subscription
-    const subscription = subscribeToInvoices((payload) => {
-      if (payload.eventType === 'INSERT') {
-        setInvoices(prev => [payload.new as Invoice, ...prev])
-      } else if (payload.eventType === 'DELETE') {
-        setInvoices(prev => prev.filter(invoice => invoice.id !== payload.old.id))
-      } else if (payload.eventType === 'UPDATE') {
-        setInvoices(prev => prev.map(invoice => 
-          invoice.id === payload.new.id ? payload.new as Invoice : invoice
-        ))
-      }
-    })
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       setLoading(true)
+      console.log('Fetching invoices...')
+      
+      // Use GET instead of POST and add proper headers
       const { data, error } = await supabase
         .from('invoices')
         .select(`
           *,
           customers (
+            id,
             name,
-            email
+            email,
+            phone,
+            address
           )
         `)
         .order('created_at', { ascending: false })
+        .returns<DbInvoice[]>()
+
+      console.log('Full query response:', {
+        success: !error,
+        hasData: data && data.length > 0,
+        dataCount: data?.length,
+        error: error ? {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        } : null
+      })
 
       if (error) throw error
-      setInvoices(data || [])
+      
+      if (data) {
+        console.log('Setting invoices:', {
+          count: data.length,
+          sample: data[0] ? {
+            id: data[0].id,
+            hasCustomer: !!data[0].customers
+          } : null
+        })
+        setInvoices(data)
+      } else {
+        setInvoices([])
+      }
     } catch (err) {
+      console.error('Error fetching invoices:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      })
       setError(err instanceof Error ? err : new Error('An error occurred'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const createInvoice = useCallback(async (invoice: Omit<InvoiceInsert, 'id' | 'created_at' | 'updated_at'>) => {
+  useEffect(() => {
+    fetchInvoices()
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('invoice-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'invoices'
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload)
+          fetchInvoices()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [fetchInvoices])
+
+  const createInvoice = useCallback(async (invoice: CreateInvoiceInput, customer: CustomerData) => {
     try {
       setLoading(true)
+      console.log('Creating invoice with data:', { invoice, customer })
       
-      // Generate invoice number (you might want to implement a more robust system)
+      // First create the customer
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .insert({
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone || null,
+          address: customer.address || null
+        })
+        .select('*')
+        .single()
+
+      if (customerError) {
+        console.error('Customer creation error:', customerError)
+        if (customerError.code === '42501') {
+          throw new Error('Permission denied. Please check database policies.')
+        }
+        throw customerError
+      }
+
+      if (!customerData) {
+        throw new Error('Customer creation failed - no data returned')
+      }
+
+      console.log('Customer created successfully:', customerData)
+
       const invoiceNumber = `INV-${Date.now()}`
       
-      const { data, error } = await supabase
+      // Then create the invoice with the new customer_id
+      const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
-          ...invoice,
           invoice_number: invoiceNumber,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          customer_id: customerData.id,
+          status: invoice.status || 'pending',
+          issue_date: invoice.issue_date,
+          due_date: invoice.due_date,
+          total_amount: invoice.total_amount,
+          currency: invoice.currency || 'USD',
+          notes: invoice.notes || null,
+          logo_url: invoice.logo_url || null
         })
-        .select(`
-          *,
-          customers (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .single()
 
-      if (error) throw error
-      return data
+      if (invoiceError) {
+        console.error('Invoice creation error:', invoiceError)
+        // Try to cleanup the customer if invoice creation fails
+        await supabase.from('customers').delete().eq('id', customerData.id)
+        throw invoiceError
+      }
+
+      if (!invoiceData) {
+        throw new Error('Invoice creation failed - no data returned')
+      }
+
+      console.log('Invoice created successfully:', invoiceData)
+
+      // Create invoice items if they exist
+      if (invoice.items?.length) {
+        const { error: itemsError } = await supabase
+          .from('invoice_items')
+          .insert(
+            invoice.items.map(item => ({
+              invoice_id: invoiceData.id,
+              description: item.description,
+              quantity: item.quantity,
+              rate: item.rate
+            }))
+          )
+
+        if (itemsError) {
+          console.error('Items creation error:', itemsError)
+          // Try to cleanup if items creation fails
+          await supabase.from('invoices').delete().eq('id', invoiceData.id)
+          await supabase.from('customers').delete().eq('id', customerData.id)
+          throw itemsError
+        }
+      }
+
+      // Fetch the complete invoice with items and customer
+      const { data: completeInvoice, error: fetchError } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          customers (*),
+          items:invoice_items(*)
+        `)
+        .eq('id', invoiceData.id)
+        .single()
+
+      if (fetchError) throw fetchError
+      
+      await fetchInvoices() // Refresh the list
+      return completeInvoice as DbInvoice
     } catch (err) {
+      console.error('Error creating invoice:', err)
       setError(err instanceof Error ? err : new Error('An error occurred'))
-      return null
+      throw err // Re-throw to handle in the UI
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [fetchInvoices])
 
-  const updateInvoice = useCallback(async (id: string, updates: Partial<InvoiceUpdate>) => {
+  const updateInvoice = useCallback(async (id: string, updates: Database['public']['Tables']['invoices']['Update']) => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('invoices')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(updates)
         .eq('id', id)
-        .select(`
-          *,
-          customers (
-            name,
-            email
-          )
-        `)
-        .single()
 
       if (error) throw error
-      return data
+      
+      // Refresh the invoices list
+      fetchInvoices()
+      return true
     } catch (err) {
       setError(err instanceof Error ? err : new Error('An error occurred'))
-      return null
+      return false
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [fetchInvoices])
 
   const deleteInvoice = useCallback(async (id: string) => {
     try {
@@ -129,6 +238,9 @@ export function useInvoices() {
         .eq('id', id)
 
       if (error) throw error
+      
+      // Refresh the invoices list
+      fetchInvoices()
       return true
     } catch (err) {
       setError(err instanceof Error ? err : new Error('An error occurred'))
@@ -136,7 +248,7 @@ export function useInvoices() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [fetchInvoices])
 
   return {
     invoices,

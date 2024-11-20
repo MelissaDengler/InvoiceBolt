@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DollarSign, Calendar, Users, ArrowUpRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from '@/components/layout/Header';
@@ -9,78 +9,135 @@ import { InvoiceDetails } from '@/components/invoices/InvoiceDetails';
 import { Invoice } from '@/types/invoice';
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import { useInvoices } from '@/hooks/use-invoices';
+import { testSupabaseConnection } from '@/lib/supabase';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
+import type { Database } from '@/lib/database.types'
+import type { CreateInvoiceInput } from '@/types/invoice'
+import { v4 as uuidv4 } from 'uuid';
+
+interface CustomerData {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+}
 
 function App() {
-  const [invoices, setInvoices] = useState<Invoice[]>([
-    {
-      id: '1',
-      client: 'Acme Corp',
-      amount: 1500,
-      date: '2024-03-20',
-      dueDate: '2024-04-20',
-      status: 'paid',
-      items: [
-        { id: '1', description: 'Website Design', quantity: 1, rate: 1500 }
-      ]
-    },
-    {
-      id: '2',
-      client: 'Stark Industries',
-      amount: 2300,
-      date: '2024-03-21',
-      dueDate: '2024-04-21',
-      status: 'pending',
-      items: [
-        { id: '1', description: 'Consulting Services', quantity: 2, rate: 1150 }
-      ]
-    },
-    {
-      id: '3',
-      client: 'Wayne Enterprises',
-      amount: 3500,
-      date: '2024-03-15',
-      dueDate: '2024-03-30',
-      status: 'overdue',
-      items: [
-        { id: '1', description: 'Software Development', quantity: 1, rate: 3500 }
-      ]
-    }
-  ]);
-
+  const { invoices, loading, error, createInvoice: createSupabaseInvoice, updateInvoice, deleteInvoice } = useInvoices();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const { toast } = useToast();
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const handleCreateInvoice = (invoice: Invoice) => {
-    setInvoices([invoice, ...invoices]);
-    toast({
-      title: "Invoice Created",
-      description: `Invoice for ${invoice.client} has been created successfully.`,
-    });
+  useEffect(() => {
+    const testConnection = async () => {
+      const result = await testSupabaseConnection();
+      if (!result.success) {
+        setConnectionError(
+          result.message || 
+          'Failed to connect to database. Please check your credentials.'
+        );
+      }
+    };
+    
+    testConnection();
+  }, []);
+
+  const handleCreateInvoice = async (invoice: Invoice, customer: CustomerData) => {
+    try {
+      const newInvoiceData: CreateInvoiceInput = {
+        total_amount: invoice.amount,
+        issue_date: invoice.date,
+        due_date: invoice.dueDate,
+        status: invoice.status,
+        currency: invoice.currency,
+        notes: invoice.notes || null,
+        items: invoice.items?.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate
+        })),
+        logo_url: invoice.logo_url
+      }
+
+      console.log('Creating invoice:', { invoice: newInvoiceData, customer })
+      
+      const newInvoice = await createSupabaseInvoice(newInvoiceData, customer)
+
+      if (newInvoice) {
+        toast({
+          title: "Success",
+          description: `Invoice for ${customer.name} has been created successfully.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleCreateInvoice:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create invoice. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEdit = (id: string) => {
-    const invoice = invoices.find(inv => inv.id === id);
-    if (invoice) {
-      setSelectedInvoice(invoice);
+    const dbInvoice = invoices.find(inv => inv.id === id);
+    if (dbInvoice) {
+      const uiInvoice: Invoice = {
+        id: dbInvoice.id,
+        client: dbInvoice.customers?.name || 'Unknown Client',
+        customer_id: dbInvoice.customer_id,
+        amount: dbInvoice.total_amount,
+        currency: dbInvoice.currency || 'USD',
+        date: dbInvoice.issue_date,
+        dueDate: dbInvoice.due_date,
+        status: dbInvoice.status,
+        notes: dbInvoice.notes || undefined,
+        logo_url: dbInvoice.logo_url
+      };
+      setSelectedInvoice(uiInvoice);
     }
   };
 
-  const handleDelete = (id: string) => {
-    setInvoices(invoices.filter(invoice => invoice.id !== id));
-    toast({
-      title: "Invoice Deleted",
-      description: "The invoice has been deleted successfully.",
-      variant: "destructive",
-    });
+  const handleDelete = async (id: string) => {
+    const success = await deleteInvoice(id);
+    if (success) {
+      toast({
+        title: "Invoice Deleted",
+        description: "The invoice has been deleted successfully.",
+        variant: "destructive",
+      });
+    }
   };
 
   const totalOutstanding = invoices
     .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
-    .reduce((acc, inv) => acc + inv.amount, 0);
+    .reduce((acc, inv) => acc + inv.total_amount, 0);
 
   const totalPaid = invoices
     .filter(inv => inv.status === 'paid')
-    .reduce((acc, inv) => acc + inv.amount, 0);
+    .reduce((acc, inv) => acc + inv.total_amount, 0);
+
+  if (connectionError) {
+    return (
+      <div className="min-h-screen p-8 bg-background">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Connection Error</AlertTitle>
+          <AlertDescription>{connectionError}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error.message}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-foreground to-background">
@@ -110,12 +167,15 @@ function App() {
           />
           <StatCard
             title="Active Clients"
-            value={new Set(invoices.map(inv => inv.client)).size}
+            value={new Set(invoices.map(inv => inv.customer_id)).size}
             icon={<Users className="h-4 w-4 text-primary" />}
           />
           <StatCard
             title="Due This Month"
-            value={invoices.filter(inv => inv.status === 'pending').length}
+            value={invoices.filter(inv => 
+              inv.status === 'pending' && 
+              new Date(inv.due_date).getMonth() === new Date().getMonth()
+            ).length}
             icon={<Calendar className="h-4 w-4 text-primary" />}
           />
         </div>
@@ -126,7 +186,16 @@ function App() {
           </CardHeader>
           <CardContent>
             <InvoiceList
-              invoices={invoices}
+              invoices={invoices.map(inv => ({
+                id: inv.id,
+                client: inv.customers?.name || 'Unknown Client',
+                amount: inv.total_amount,
+                date: inv.issue_date,
+                dueDate: inv.due_date,
+                status: inv.status,
+                customer_id: inv.customer_id,
+                notes: inv.notes || undefined
+              }))}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
