@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       customers: {
@@ -41,39 +41,60 @@ export type Database = {
       invoices: {
         Row: {
           id: string
-          invoice_number: string
           customer_id: string
-          status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          total_amount: number
+          currency: Currency
           issue_date: string
           due_date: string
-          total_amount: number
+          status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
           notes: string | null
           created_at: string
           updated_at: string
+          invoice_number: string
+          logo_url: string | null
+          payment_terms: number | null
+          tax_rate: number | null
+          discount: number | null
+          recurring: boolean | null
+          recurring_interval: 'monthly' | 'quarterly' | 'yearly' | null
         }
         Insert: {
           id?: string
-          invoice_number: string
           customer_id: string
-          status?: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          total_amount: number
+          currency?: Currency
           issue_date: string
           due_date: string
-          total_amount: number
+          status?: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
           notes?: string | null
           created_at?: string
           updated_at?: string
+          invoice_number?: string
+          logo_url?: string | null
+          payment_terms?: number | null
+          tax_rate?: number | null
+          discount?: number | null
+          recurring?: boolean | null
+          recurring_interval?: 'monthly' | 'quarterly' | 'yearly' | null
         }
         Update: {
           id?: string
-          invoice_number?: string
           customer_id?: string
-          status?: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          total_amount?: number
+          currency?: Currency
           issue_date?: string
           due_date?: string
-          total_amount?: number
+          status?: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
           notes?: string | null
           created_at?: string
           updated_at?: string
+          invoice_number?: string
+          logo_url?: string | null
+          payment_terms?: number | null
+          tax_rate?: number | null
+          discount?: number | null
+          recurring?: boolean | null
+          recurring_interval?: 'monthly' | 'quarterly' | 'yearly' | null
         }
       }
       invoice_items: {

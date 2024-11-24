@@ -1,7 +1,7 @@
 import type { Database } from '@/lib/database.types'
 
 // Add supported currencies
-export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD';
+export type Currency = 'USD' | 'ZAR' | 'EUR' | 'GBP';
 
 export type DbInvoice = Database['public']['Tables']['invoices']['Row'] & {
   customers: Database['public']['Tables']['customers']['Row'] | null;
@@ -22,6 +22,12 @@ export interface Invoice {
   notes?: string;
   items?: InvoiceItem[];
   logo_url?: string;
+  payment_terms?: number; // Days until due
+  reference_number?: string;
+  tax_rate?: number;
+  discount?: number;
+  recurring?: boolean;
+  recurring_interval?: 'monthly' | 'quarterly' | 'yearly';
 }
 
 export interface InvoiceItem {
@@ -37,4 +43,10 @@ export type CreateInvoiceInput = Omit<
 > & {
   items?: Omit<InvoiceItem, 'id'>[];
   logo_url?: string;
+  payment_terms?: number;
+  reference_number?: string;
+  tax_rate?: number;
+  discount?: number;
+  recurring?: boolean;
+  recurring_interval?: 'monthly' | 'quarterly' | 'yearly';
 }

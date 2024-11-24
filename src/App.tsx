@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Calendar, Users, ArrowUpRight } from 'lucide-react';
+import { DollarSign, Calendar, Users, ArrowUpRight, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -12,10 +12,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { useInvoices } from '@/hooks/use-invoices';
 import { testSupabaseConnection } from '@/lib/supabase';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from 'lucide-react';
-import type { Database } from '@/lib/database.types'
-import type { CreateInvoiceInput } from '@/types/invoice'
-import { v4 as uuidv4 } from 'uuid';
+import type { CreateInvoiceInput } from '@/types/invoice';
+import { AnalyticsSection } from '@/components/dashboard/AnalyticsSection';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { format } from 'date-fns';
+import type { DbInvoice } from '@/types/invoice';
 
 interface CustomerData {
   name: string;
@@ -25,10 +26,11 @@ interface CustomerData {
 }
 
 function App() {
-  const { invoices, loading, error, createInvoice: createSupabaseInvoice, updateInvoice, deleteInvoice } = useInvoices();
+  const { invoices, loading, error, createInvoice: createSupabaseInvoice, deleteInvoice } = useInvoices();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const { toast } = useToast();
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   useEffect(() => {
     const testConnection = async () => {
@@ -47,6 +49,7 @@ function App() {
   const handleCreateInvoice = async (invoice: Invoice, customer: CustomerData) => {
     try {
       const newInvoiceData: CreateInvoiceInput = {
+        customer_id: '',
         total_amount: invoice.amount,
         issue_date: invoice.date,
         due_date: invoice.dueDate,
@@ -58,18 +61,22 @@ function App() {
           quantity: item.quantity,
           rate: item.rate
         })),
-        logo_url: invoice.logo_url
-      }
-
-      console.log('Creating invoice:', { invoice: newInvoiceData, customer })
+        logo_url: invoice.logo_url,
+        payment_terms: invoice.payment_terms,
+        tax_rate: invoice.tax_rate,
+        discount: invoice.discount,
+        recurring: invoice.recurring,
+        recurring_interval: invoice.recurring_interval
+      };
       
-      const newInvoice = await createSupabaseInvoice(newInvoiceData, customer)
+      const newInvoice = await createSupabaseInvoice(newInvoiceData, customer);
 
       if (newInvoice) {
         toast({
           title: "Success",
           description: `Invoice for ${customer.name} has been created successfully.`,
         });
+        setCreateDialogOpen(false);
       }
     } catch (error) {
       console.error('Error in handleCreateInvoice:', error);
@@ -94,7 +101,7 @@ function App() {
         dueDate: dbInvoice.due_date,
         status: dbInvoice.status,
         notes: dbInvoice.notes || undefined,
-        logo_url: dbInvoice.logo_url
+        logo_url: dbInvoice.logo_url || undefined
       };
       setSelectedInvoice(uiInvoice);
     }
@@ -111,6 +118,31 @@ function App() {
     }
   };
 
+  const handleView = (id: string) => {
+    const dbInvoice = invoices.find(inv => inv.id === id);
+    if (dbInvoice) {
+      const uiInvoice: Invoice = {
+        id: dbInvoice.id,
+        client: dbInvoice.customers?.name || 'Unknown Client',
+        customer_id: dbInvoice.customer_id,
+        amount: dbInvoice.total_amount,
+        currency: dbInvoice.currency || 'USD',
+        date: dbInvoice.issue_date,
+        dueDate: dbInvoice.due_date,
+        status: dbInvoice.status,
+        notes: dbInvoice.notes || undefined,
+        items: dbInvoice.items || [],
+        logo_url: dbInvoice.logo_url || undefined,
+        payment_terms: dbInvoice.payment_terms || undefined,
+        tax_rate: dbInvoice.tax_rate || undefined,
+        discount: dbInvoice.discount || undefined,
+        recurring: dbInvoice.recurring || undefined,
+        recurring_interval: dbInvoice.recurring_interval || undefined
+      };
+      setSelectedInvoice(uiInvoice);
+    }
+  };
+
   const totalOutstanding = invoices
     .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
     .reduce((acc, inv) => acc + inv.total_amount, 0);
@@ -118,6 +150,41 @@ function App() {
   const totalPaid = invoices
     .filter(inv => inv.status === 'paid')
     .reduce((acc, inv) => acc + inv.total_amount, 0);
+
+  const handleExport = () => {
+    toast({
+      title: "Coming Soon",
+      description: "Export functionality will be available soon!",
+    });
+  };
+
+  const handleSendReminders = () => {
+    toast({
+      title: "Coming Soon",
+      description: "Reminder functionality will be available soon!",
+    });
+  };
+
+  const handleGenerateReport = () => {
+    toast({
+      title: "Coming Soon",
+      description: "Report generation will be available soon!",
+    });
+  };
+
+  const getMonthlyTrend = (invoices: DbInvoice[]) => {
+    const monthlyData: { [key: string]: number } = {};
+    
+    invoices.forEach(invoice => {
+      const monthYear = format(new Date(invoice.issue_date), 'MMM yyyy');
+      monthlyData[monthYear] = (monthlyData[monthYear] || 0) + invoice.total_amount;
+    });
+
+    return Object.entries(monthlyData).map(([date, amount]) => ({
+      date,
+      amount
+    }));
+  };
 
   if (connectionError) {
     return (
@@ -153,34 +220,73 @@ function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Outstanding"
-            value={`$${totalOutstanding.toLocaleString()}`}
-            icon={<DollarSign className="h-4 w-4 text-primary" />}
-            description="From pending and overdue invoices"
+          {[
+            {
+              title: "Total Outstanding",
+              value: `$${totalOutstanding.toLocaleString()}`,
+              icon: <DollarSign className="h-4 w-4 text-primary" />,
+              description: "From pending and overdue invoices",
+              trend: totalOutstanding > 0 ? ("up" as const) : ("down" as const)
+            },
+            {
+              title: "Total Paid",
+              value: `$${totalPaid.toLocaleString()}`,
+              icon: <ArrowUpRight className="h-4 w-4 text-green-600" />,
+              description: "Total payments received",
+              trend: totalPaid > 0 ? ("up" as const) : ("down" as const)
+            },
+            {
+              title: "Active Clients",
+              value: new Set(invoices.map(inv => inv.customer_id)).size,
+              icon: <Users className="h-4 w-4 text-primary" />,
+              description: "Total active clients",
+              trend: new Set(invoices.map(inv => inv.customer_id)).size > 0 ? ("up" as const) : ("down" as const)
+            },
+            {
+              title: "Due This Month",
+              value: invoices.filter(inv => 
+                inv.status === 'pending' && 
+                new Date(inv.due_date).getMonth() === new Date().getMonth()
+              ).length,
+              icon: <Calendar className="h-4 w-4 text-primary" />,
+              description: "Invoices due this month",
+              trend: invoices.filter(inv => 
+                inv.status === 'pending' && 
+                new Date(inv.due_date).getMonth() === new Date().getMonth()
+              ).length > 0 ? ("up" as const) : ("down" as const)
+            }
+          ].map((stat, index) => (
+            <StatCard
+              key={index}
+              {...stat}
+              className="transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer"
+            />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <QuickActions 
+            onNewInvoice={() => setCreateDialogOpen(true)}
+            onExport={handleExport}
+            onSendReminders={handleSendReminders}
+            onGenerateReport={handleGenerateReport}
           />
-          <StatCard
-            title="Total Paid"
-            value={`$${totalPaid.toLocaleString()}`}
-            icon={<ArrowUpRight className="h-4 w-4 text-green-600" />}
-            description="Total payments received"
-          />
-          <StatCard
-            title="Active Clients"
-            value={new Set(invoices.map(inv => inv.customer_id)).size}
-            icon={<Users className="h-4 w-4 text-primary" />}
-          />
-          <StatCard
-            title="Due This Month"
-            value={invoices.filter(inv => 
-              inv.status === 'pending' && 
-              new Date(inv.due_date).getMonth() === new Date().getMonth()
-            ).length}
-            icon={<Calendar className="h-4 w-4 text-primary" />}
+          <AnalyticsSection 
+            invoiceData={invoices.map(inv => ({
+              date: new Date(inv.issue_date).toLocaleDateString(),
+              amount: inv.total_amount
+            }))}
+            statusDistribution={[
+              { name: 'Paid', value: invoices.filter(inv => inv.status === 'paid').length },
+              { name: 'Pending', value: invoices.filter(inv => inv.status === 'pending').length },
+              { name: 'Overdue', value: invoices.filter(inv => inv.status === 'overdue').length },
+              { name: 'Draft', value: invoices.filter(inv => inv.status === 'draft').length }
+            ]}
+            monthlyTrend={getMonthlyTrend(invoices)}
           />
         </div>
 
-        <Card className="shadow-lg border-primary/20">
+        <Card className="transition-all duration-300 shadow-lg border-primary/20 hover:shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-gray-900">Recent Invoices</CardTitle>
           </CardHeader>
@@ -190,12 +296,14 @@ function App() {
                 id: inv.id,
                 client: inv.customers?.name || 'Unknown Client',
                 amount: inv.total_amount,
+                currency: inv.currency || 'USD',
                 date: inv.issue_date,
                 dueDate: inv.due_date,
                 status: inv.status,
                 customer_id: inv.customer_id,
                 notes: inv.notes || undefined
               }))}
+              onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />

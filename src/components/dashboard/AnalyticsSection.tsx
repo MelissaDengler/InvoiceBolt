@@ -1,0 +1,78 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+
+interface AnalyticsSectionProps {
+  invoiceData: any[];
+  statusDistribution: { name: string; value: number }[];
+  monthlyTrend: { date: string; amount: number }[];
+}
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+export function AnalyticsSection({ invoiceData, statusDistribution, monthlyTrend }: AnalyticsSectionProps) {
+  return (
+    <Card className="shadow-lg border-primary/20 transition-all duration-300 hover:shadow-xl">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold text-gray-900">Analytics</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="trend">
+          <TabsList className="mb-4">
+            <TabsTrigger value="trend">Revenue Trend</TabsTrigger>
+            <TabsTrigger value="status">Status Distribution</TabsTrigger>
+            <TabsTrigger value="monthly">Monthly Analysis</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="trend" className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={invoiceData}>
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Line 
+                  type="monotone" 
+                  dataKey="amount" 
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 8 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </TabsContent>
+
+          <TabsContent value="status" className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusDistribution}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {statusDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </TabsContent>
+
+          <TabsContent value="monthly" className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyTrend}>
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="amount" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+} 

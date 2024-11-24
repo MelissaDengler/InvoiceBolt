@@ -22,11 +22,9 @@ interface CreateInvoiceDialogProps {
 
 const CURRENCIES: { value: Currency; label: string; symbol: string }[] = [
   { value: 'USD', label: 'US Dollar', symbol: '$' },
+  { value: 'ZAR', label: 'South African Rand', symbol: 'R' },
   { value: 'EUR', label: 'Euro', symbol: '€' },
   { value: 'GBP', label: 'British Pound', symbol: '£' },
-  { value: 'JPY', label: 'Japanese Yen', symbol: '¥' },
-  { value: 'CAD', label: 'Canadian Dollar', symbol: 'C$' },
-  { value: 'AUD', label: 'Australian Dollar', symbol: 'A$' },
 ];
 
 export function CreateInvoiceDialog({ onCreateInvoice }: CreateInvoiceDialogProps) {
