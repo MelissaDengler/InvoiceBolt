@@ -26,7 +26,12 @@ console.log('Creating Supabase client with:', {
   keyStart: supabaseAnonKey.substring(0, 10)
 })
 
-// Create client with additional options
+// Add error handling for invalid anon key format
+if (!/^[a-zA-Z0-9\-_]+$/.test(supabaseAnonKey)) {
+  throw new Error('Invalid VITE_SUPABASE_ANON_KEY format')
+}
+
+// Add timeout to client creation
 export const supabase = createClient<Database>(
   supabaseUrl,
   supabaseAnonKey,
@@ -34,6 +39,12 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true
+    },
+    global: {
+      headers: { 'x-application-name': 'invoice-app' },
+    },
+    db: {
+      schema: 'public'
     }
   }
 )

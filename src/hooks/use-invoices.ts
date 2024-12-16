@@ -104,6 +104,11 @@ export function useInvoices() {
       setLoading(true)
       console.log('Creating invoice with data:', { invoice, customer })
       
+      // Add timeout for operations
+      const timeout = setTimeout(() => {
+        throw new Error('Operation timed out')
+      }, 30000)
+
       // First create the customer
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
@@ -206,11 +211,20 @@ export function useInvoices() {
       if (fetchError) throw fetchError
       
       await fetchInvoices() // Refresh the list
+      clearTimeout(timeout)
       return completeInvoice as DbInvoice
     } catch (err) {
       console.error('Error creating invoice:', err)
       setError(err instanceof Error ? err : new Error('An error occurred'))
-      throw err // Re-throw to handle in the UI
+      if (err instanceof Error) {
+        if (err.message.includes('duplicate key')) {
+          throw new Error('An invoice with this number already exists')
+        }
+        if (err.message.includes('permission denied')) {
+          throw new Error('You do not have permission to create invoices')
+        }
+      }
+      throw err
     } finally {
       setLoading(false)
     }

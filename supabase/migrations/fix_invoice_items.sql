@@ -40,3 +40,20 @@ GRANT ALL ON invoice_items TO authenticated;
 
 -- Enable realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE invoice_items; 
+
+-- Add indexes for better performance
+CREATE INDEX idx_invoice_items_invoice_id ON invoice_items(invoice_id);
+
+-- Add trigger for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_invoice_items_updated_at
+    BEFORE UPDATE ON invoice_items
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
