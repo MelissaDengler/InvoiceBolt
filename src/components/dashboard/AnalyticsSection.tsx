@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
@@ -12,9 +12,12 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export function AnalyticsSection({ invoiceData, statusDistribution, monthlyTrend }: AnalyticsSectionProps) {
   return (
-    <Card className="shadow-lg border-primary/20 transition-all duration-300 hover:shadow-xl">
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-gray-900">Analytics</CardTitle>
+        <CardTitle className="text-soft-pink">Analytics</CardTitle>
+        <CardDescription className="text-muted-pink">
+          Invoice and payment statistics
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="trend">

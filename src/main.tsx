@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/toaster';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import App from './App';
 import './index.css';
 
@@ -15,9 +16,11 @@ if (!rootElement) {
 // Create root and render
 createRoot(rootElement).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-      <Toaster />
-    </ErrorBoundary>
+    <ThemeProvider defaultTheme="system" storageKey="invoice-theme">
+      <ErrorBoundary>
+        <App />
+        <Toaster />
+      </ErrorBoundary>
+    </ThemeProvider>
   </StrictMode>
 );

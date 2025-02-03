@@ -1,25 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Plus, Download, Mail, Printer, FileText, 
   RefreshCw, Settings, Users, FileSpreadsheet 
 } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 interface QuickActionsProps {
   onNewInvoice: () => void;
   onExport: () => void;
   onSendReminders: () => void;
   onGenerateReport: () => void;
+  className?: string;
 }
 
-export function QuickActions({ onNewInvoice, onExport, onSendReminders, onGenerateReport }: QuickActionsProps) {
+export function QuickActions({ onNewInvoice, onExport, onSendReminders, onGenerateReport, className }: QuickActionsProps) {
   return (
-    <Card className="shadow-lg border-primary/20 transition-all duration-300 hover:shadow-xl">
+    <Card className={cn("h-full", className)}>
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-          <Settings className="h-6 w-6 text-primary" />
-          Quick Actions
-        </CardTitle>
+        <CardTitle className="text-soft-pink">Quick Actions</CardTitle>
+        <CardDescription className="text-muted-pink">
+          Common tasks and operations
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-4">
         <Button 

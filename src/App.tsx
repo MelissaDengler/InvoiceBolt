@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import type { DbInvoice } from '@/types/invoice';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { validateEnv } from '@/lib/env';
+import { ConnectionStatus } from '@/components/ConnectionStatus'
 
 interface CustomerData {
   name: string;
@@ -215,105 +216,108 @@ function App() {
     <ErrorBoundary>
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-500 mt-1">Welcome back, manage your invoices</p>
+        <main className="container mx-auto px-4 py-8 md:px-6 md:py-12 lg:px-8">
+          <div className="space-y-8 md:space-y-12">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold text-foreground dark:text-primary">Dashboard</h1>
+                <p className="text-muted-foreground mt-1">Welcome back, manage your invoices</p>
+              </div>
+              <CreateInvoiceDialog onCreateInvoice={handleCreateInvoice} />
             </div>
-            <CreateInvoiceDialog onCreateInvoice={handleCreateInvoice} />
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                title: "Total Outstanding",
-                value: `$${totalOutstanding.toLocaleString()}`,
-                icon: <DollarSign className="h-4 w-4 text-primary" />,
-                description: "From pending and overdue invoices",
-                trend: totalOutstanding > 0 ? ("up" as const) : ("down" as const)
-              },
-              {
-                title: "Total Paid",
-                value: `$${totalPaid.toLocaleString()}`,
-                icon: <ArrowUpRight className="h-4 w-4 text-green-600" />,
-                description: "Total payments received",
-                trend: totalPaid > 0 ? ("up" as const) : ("down" as const)
-              },
-              {
-                title: "Active Clients",
-                value: new Set(invoices.map(inv => inv.customer_id)).size,
-                icon: <Users className="h-4 w-4 text-primary" />,
-                description: "Total active clients",
-                trend: new Set(invoices.map(inv => inv.customer_id)).size > 0 ? ("up" as const) : ("down" as const)
-              },
-              {
-                title: "Due This Month",
-                value: invoices.filter(inv => 
-                  inv.status === 'pending' && 
-                  new Date(inv.due_date).getMonth() === new Date().getMonth()
-                ).length,
-                icon: <Calendar className="h-4 w-4 text-primary" />,
-                description: "Invoices due this month",
-                trend: invoices.filter(inv => 
-                  inv.status === 'pending' && 
-                  new Date(inv.due_date).getMonth() === new Date().getMonth()
-                ).length > 0 ? ("up" as const) : ("down" as const)
-              }
-            ].map((stat, index) => (
-              <StatCard
-                key={index}
-                {...stat}
-                className="transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer"
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 md:gap-8">
+              {[
+                {
+                  title: "Total Outstanding",
+                  value: `$${totalOutstanding.toLocaleString()}`,
+                  icon: <DollarSign className="h-4 w-4 text-primary" />,
+                  description: "From pending and overdue invoices",
+                  trend: totalOutstanding > 0 ? ("up" as const) : ("down" as const)
+                },
+                {
+                  title: "Total Paid",
+                  value: `$${totalPaid.toLocaleString()}`,
+                  icon: <ArrowUpRight className="h-4 w-4 text-green-600" />,
+                  description: "Total payments received",
+                  trend: totalPaid > 0 ? ("up" as const) : ("down" as const)
+                },
+                {
+                  title: "Active Clients",
+                  value: new Set(invoices.map(inv => inv.customer_id)).size,
+                  icon: <Users className="h-4 w-4 text-primary" />,
+                  description: "Total active clients",
+                  trend: new Set(invoices.map(inv => inv.customer_id)).size > 0 ? ("up" as const) : ("down" as const)
+                },
+                {
+                  title: "Due This Month",
+                  value: invoices.filter(inv => 
+                    inv.status === 'pending' && 
+                    new Date(inv.due_date).getMonth() === new Date().getMonth()
+                  ).length,
+                  icon: <Calendar className="h-4 w-4 text-primary" />,
+                  description: "Invoices due this month",
+                  trend: invoices.filter(inv => 
+                    inv.status === 'pending' && 
+                    new Date(inv.due_date).getMonth() === new Date().getMonth()
+                  ).length > 0 ? ("up" as const) : ("down" as const)
+                }
+              ].map((stat, index) => (
+                <StatCard
+                  key={index}
+                  {...stat}
+                  className="card-hover glass-morphism gradient-border shimmer"
+                />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+              <QuickActions 
+                className="floating"
+                onNewInvoice={() => setCreateDialogOpen(true)}
+                onExport={handleExport}
+                onSendReminders={handleSendReminders}
+                onGenerateReport={handleGenerateReport}
               />
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <QuickActions 
-              onNewInvoice={() => setCreateDialogOpen(true)}
-              onExport={handleExport}
-              onSendReminders={handleSendReminders}
-              onGenerateReport={handleGenerateReport}
-            />
-            <AnalyticsSection 
-              invoiceData={invoices.map(inv => ({
-                date: new Date(inv.issue_date).toLocaleDateString(),
-                amount: inv.total_amount
-              }))}
-              statusDistribution={[
-                { name: 'Paid', value: invoices.filter(inv => inv.status === 'paid').length },
-                { name: 'Pending', value: invoices.filter(inv => inv.status === 'pending').length },
-                { name: 'Overdue', value: invoices.filter(inv => inv.status === 'overdue').length },
-                { name: 'Draft', value: invoices.filter(inv => inv.status === 'draft').length }
-              ]}
-              monthlyTrend={getMonthlyTrend(invoices)}
-            />
-          </div>
-
-          <Card className="transition-all duration-300 shadow-lg border-primary/20 hover:shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-semibold text-gray-900">Recent Invoices</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <InvoiceList
-                invoices={invoices.map(inv => ({
-                  id: inv.id,
-                  client: inv.customers?.name || 'Unknown Client',
-                  amount: inv.total_amount,
-                  currency: inv.currency || 'USD',
-                  date: inv.issue_date,
-                  dueDate: inv.due_date,
-                  status: inv.status,
-                  customer_id: inv.customer_id,
-                  notes: inv.notes || undefined
+              <AnalyticsSection 
+                invoiceData={invoices.map(inv => ({
+                  date: new Date(inv.issue_date).toLocaleDateString(),
+                  amount: inv.total_amount
                 }))}
-                onView={handleView}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                statusDistribution={[
+                  { name: 'Paid', value: invoices.filter(inv => inv.status === 'paid').length },
+                  { name: 'Pending', value: invoices.filter(inv => inv.status === 'pending').length },
+                  { name: 'Overdue', value: invoices.filter(inv => inv.status === 'overdue').length },
+                  { name: 'Draft', value: invoices.filter(inv => inv.status === 'draft').length }
+                ]}
+                monthlyTrend={getMonthlyTrend(invoices)}
               />
-            </CardContent>
-          </Card>
+            </div>
+
+            <Card className="card-hover glass-morphism gradient-border">
+              <CardHeader>
+                <CardTitle className="text-2xl font-semibold">Recent Invoices</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InvoiceList
+                  invoices={invoices.map(inv => ({
+                    id: inv.id,
+                    client: inv.customers?.name || 'Unknown Client',
+                    amount: inv.total_amount,
+                    currency: inv.currency || 'USD',
+                    date: inv.issue_date,
+                    dueDate: inv.due_date,
+                    status: inv.status,
+                    customer_id: inv.customer_id,
+                    notes: inv.notes || undefined
+                  }))}
+                  onView={handleView}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </main>
 
         {selectedInvoice && (
@@ -323,6 +327,7 @@ function App() {
             onOpenChange={(open) => !open && setSelectedInvoice(null)}
           />
         )}
+        <ConnectionStatus />
         <Toaster />
       </div>
     </ErrorBoundary>

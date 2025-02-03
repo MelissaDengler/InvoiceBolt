@@ -26,12 +26,11 @@ console.log('Creating Supabase client with:', {
   keyStart: supabaseAnonKey.substring(0, 10)
 })
 
-// Add error handling for invalid anon key format
-if (!/^[a-zA-Z0-9\-_]+$/.test(supabaseAnonKey)) {
-  throw new Error('Invalid VITE_SUPABASE_ANON_KEY format')
-}
+// Remove the strict key format validation
+// if (!/^[a-zA-Z0-9\-_]+$/.test(supabaseAnonKey)) {
+//   throw new Error('Invalid VITE_SUPABASE_ANON_KEY format')
+// }
 
-// Add timeout to client creation
 export const supabase = createClient<Database>(
   supabaseUrl,
   supabaseAnonKey,
@@ -48,6 +47,50 @@ export const supabase = createClient<Database>(
     }
   }
 )
+
+// Add a connection test function
+export const testConnection = async () => {
+  try {
+    console.log('Testing Supabase connection...')
+    
+    // Test the connection by making a simple query
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('count')
+      .limit(1)
+      .single()
+
+    if (error) {
+      console.error('Connection test failed:', error)
+      return {
+        success: false,
+        error: error.message,
+        details: {
+          code: error.code,
+          hint: error.hint,
+          details: error.details
+        }
+      }
+    }
+
+    console.log('Connection test successful:', data)
+    return {
+      success: true,
+      data
+    }
+  } catch (err) {
+    console.error('Connection test failed with exception:', err)
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unknown error occurred'
+    }
+  }
+}
+
+// Run the test immediately
+testConnection().then(result => {
+  console.log('Initial connection test result:', result)
+})
 
 // Modified test connection to check auth headers
 export const testSupabaseConnection = async () => {

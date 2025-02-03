@@ -1,5 +1,7 @@
-import { Bell } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Menu, X, Bell } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '../ui/button'
+import { ThemeToggle } from '../theme/ThemeToggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,11 +12,38 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Header() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
   return (
-    <header className="border-b border-primary/20 bg-white/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="flex h-16 items-center px-8 max-w-7xl mx-auto">
-        <div className="text-2xl font-bold text-gray-900">Invoice.io</div>
+    <header className="sticky top-0 z-50 w-full border-b glass-morphism">
+      <div className="container flex h-16 items-center py-4">
+        <div className="mr-4 flex">
+          <a className="mr-6 flex items-center space-x-2" href="/">
+            <span className="hidden font-bold sm:inline-block">InvoiceBolt</span>
+          </a>
+        </div>
+
+        <Button
+          variant="ghost"
+          className="mr-2 px-0 text-base hover:bg-transparent focus:ring-0 md:hidden"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </Button>
+
+        <div className={`${isMenuOpen ? 'flex' : 'hidden'} absolute top-14 left-0 right-0 bg-background p-4 md:static md:flex md:p-0`}>
+          <nav className="flex-1">
+            <ul className="flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0">
+              <li><a href="/dashboard" className="hover:text-primary">Dashboard</a></li>
+              <li><a href="/invoices" className="hover:text-primary">Invoices</a></li>
+              <li><a href="/customers" className="hover:text-primary">Customers</a></li>
+              <li><a href="/reports" className="hover:text-primary">Reports</a></li>
+            </ul>
+          </nav>
+        </div>
+
         <div className="ml-auto flex items-center space-x-4">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -52,5 +81,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  );
+  )
 }

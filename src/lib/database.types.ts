@@ -42,59 +42,59 @@ export interface Database {
         Row: {
           id: string
           customer_id: string
-          total_amount: number
-          currency: Currency
+          invoice_number: string
+          status: 'draft' | 'pending' | 'paid' | 'overdue'
           issue_date: string
           due_date: string
-          status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          total_amount: number
+          currency: string
           notes: string | null
           created_at: string
           updated_at: string
-          invoice_number: string
           logo_url: string | null
           payment_terms: number | null
           tax_rate: number | null
           discount: number | null
           recurring: boolean | null
-          recurring_interval: 'monthly' | 'quarterly' | 'yearly' | null
+          recurring_interval: string | null
         }
         Insert: {
           id?: string
           customer_id: string
-          total_amount: number
-          currency?: Currency
+          invoice_number?: string
+          status?: 'draft' | 'pending' | 'paid' | 'overdue'
           issue_date: string
           due_date: string
-          status?: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          total_amount: number
+          currency?: string
           notes?: string | null
           created_at?: string
           updated_at?: string
-          invoice_number?: string
           logo_url?: string | null
           payment_terms?: number | null
           tax_rate?: number | null
           discount?: number | null
           recurring?: boolean | null
-          recurring_interval?: 'monthly' | 'quarterly' | 'yearly' | null
+          recurring_interval?: string | null
         }
         Update: {
           id?: string
           customer_id?: string
-          total_amount?: number
-          currency?: Currency
+          invoice_number?: string
+          status?: 'draft' | 'pending' | 'paid' | 'overdue'
           issue_date?: string
           due_date?: string
-          status?: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          total_amount?: number
+          currency?: string
           notes?: string | null
           created_at?: string
           updated_at?: string
-          invoice_number?: string
           logo_url?: string | null
           payment_terms?: number | null
           tax_rate?: number | null
           discount?: number | null
           recurring?: boolean | null
-          recurring_interval?: 'monthly' | 'quarterly' | 'yearly' | null
+          recurring_interval?: string | null
         }
       }
       invoice_items: {
@@ -128,6 +128,15 @@ export interface Database {
           updated_at?: string
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 } 

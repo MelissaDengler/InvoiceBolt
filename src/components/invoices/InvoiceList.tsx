@@ -1,4 +1,13 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency } from '@/lib/utils'
+import { Badge } from '../ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table'
 import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Invoice } from "@/types/invoice";
@@ -12,66 +21,95 @@ interface InvoiceListProps {
 
 export function InvoiceList({ invoices, onView, onEdit, onDelete }: InvoiceListProps) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Client</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <div className="overflow-x-auto">
+      {/* Mobile View */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
         {invoices.map((invoice) => (
-          <TableRow key={invoice.id}>
-            <TableCell className="font-medium">{invoice.client}</TableCell>
-            <TableCell>{invoice.currency} {invoice.amount.toLocaleString()}</TableCell>
-            <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
-            <TableCell>
-              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                {
-                  paid: "bg-green-100 text-green-800",
-                  pending: "bg-yellow-100 text-yellow-800",
-                  overdue: "bg-red-100 text-red-800",
-                  cancelled: "bg-gray-100 text-gray-800",
-                  draft: "bg-blue-100 text-blue-800",
-                }[invoice.status]
-              }`}>
-                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-              </span>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onView(invoice.id)}
-                  className="hover:bg-primary/10"
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEdit(invoice.id)}
-                  className="hover:bg-primary/10"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDelete(invoice.id)}
-                  className="hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
+          <div
+            key={invoice.id}
+            className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm"
+          >
+            <div className="flex items-center justify-between">
+              <div className="font-medium">{invoice.client}</div>
+              <Badge variant={getStatusVariant(invoice.status)}>
+                {invoice.status}
+              </Badge>
+            </div>
+            <div className="mt-2 text-sm text-muted-foreground">
+              {formatCurrency(invoice.amount, invoice.currency)}
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button
+                onClick={() => onView(invoice.id)}
+                className="text-sm text-primary hover:underline"
+              >
+                View
+              </button>
+              <button
+                onClick={() => onEdit(invoice.id)}
+                className="text-sm text-primary hover:underline"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => onDelete(invoice.id)}
+                className="text-sm text-destructive hover:underline"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         ))}
-      </TableBody>
-    </Table>
+      </div>
+
+      {/* Desktop View */}
+      <Table className="hidden md:table">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Client</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {invoices.map((invoice) => (
+            <TableRow key={invoice.id}>
+              <TableCell>{invoice.client}</TableCell>
+              <TableCell>
+                {formatCurrency(invoice.amount, invoice.currency)}
+              </TableCell>
+              <TableCell>
+                <Badge variant={getStatusVariant(invoice.status)}>
+                  {invoice.status}
+                </Badge>
+              </TableCell>
+              <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
+              <TableCell className="space-x-2">
+                <button
+                  onClick={() => onView(invoice.id)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View
+                </button>
+                <button
+                  onClick={() => onEdit(invoice.id)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => onDelete(invoice.id)}
+                  className="text-sm text-destructive hover:underline"
+                >
+                  Delete
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
