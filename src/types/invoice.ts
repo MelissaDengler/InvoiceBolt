@@ -10,33 +10,26 @@ export type DbInvoice = Database['public']['Tables']['invoices']['Row'] & {
 
 export type DbInvoiceItem = Database['public']['Tables']['invoice_items']['Row']
 
+export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue';
+
 export interface Invoice {
   id: string;
   client: string;
-  customer_id: string;
   amount: number;
   currency: string;
   date: string;
   dueDate: string;
-  status: 'draft' | 'pending' | 'paid' | 'overdue';
+  status: InvoiceStatus;
+  customer_id: string;
   notes?: string;
   items?: InvoiceItem[];
-  logo_url?: string;
-  payment_terms?: number;
-  tax_rate?: number;
-  discount?: number;
-  recurring?: boolean;
-  recurring_interval?: string;
 }
 
 export interface InvoiceItem {
-  id?: string;
-  invoice_id?: string;
+  id: string;
   description: string;
   quantity: number;
   rate: number;
-  unit_price?: number;
-  amount?: number;
 }
 
 export interface CreateInvoiceInput {
