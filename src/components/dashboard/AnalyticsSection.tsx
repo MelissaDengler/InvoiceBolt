@@ -55,7 +55,7 @@ export function AnalyticsSection({ invoiceData, statusDistribution, monthlyTrend
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {statusDistribution.map((entry, index) => (
+                  {statusDistribution.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

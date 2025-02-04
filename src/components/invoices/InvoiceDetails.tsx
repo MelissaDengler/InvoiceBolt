@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Badge } from '../ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import type { Invoice } from '@/types/invoice'
+import { getStatusVariant } from '@/lib/utils/status'
 
 interface InvoiceDetailsProps {
   invoice: Invoice

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Calendar, Users, ArrowUpRight, AlertCircle, Loader2 } from 'lucide-react';
+import { DollarSign, Calendar, Users, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -33,7 +33,6 @@ function App() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const { toast } = useToast();
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   useEffect(() => {
     // Validate environment variables on startup
@@ -82,7 +81,6 @@ function App() {
           title: "Success",
           description: `Invoice for ${customer.name} has been created successfully.`,
         });
-        setCreateDialogOpen(false);
       }
     } catch (error) {
       console.error('Error in handleCreateInvoice:', error);
@@ -274,7 +272,7 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
               <QuickActions 
                 className="floating"
-                onNewInvoice={() => setCreateDialogOpen(true)}
+                onNewInvoice={() => setSelectedInvoice(null)}
                 onExport={handleExport}
                 onSendReminders={handleSendReminders}
                 onGenerateReport={handleGenerateReport}

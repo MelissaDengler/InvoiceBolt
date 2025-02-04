@@ -13,7 +13,7 @@ export function ConnectionStatus() {
         setStatus('connected')
       } else {
         setStatus('error')
-        setError(result.error)
+        setError(result.error?.message || 'Failed to connect to Supabase')
       }
     }
 

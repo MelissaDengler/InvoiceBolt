@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
-  Plus, Download, Mail, Printer, FileText, 
-  RefreshCw, Settings, Users, FileSpreadsheet 
+  Plus, FileSpreadsheet, Mail, FileText, 
+  RefreshCw, Users 
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 

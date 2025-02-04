@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Invoice } from "@/types/invoice";
+import { getStatusVariant } from '@/lib/utils/status';
 
 interface InvoiceListProps {
   invoices: Invoice[];

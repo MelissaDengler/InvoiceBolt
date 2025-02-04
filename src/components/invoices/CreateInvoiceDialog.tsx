@@ -81,10 +81,10 @@ export function CreateInvoiceDialog({ onCreateInvoice }: CreateInvoiceDialogProp
       const formData = new FormData(form);
       
       const customer: CustomerData = {
-        name: formData.get('client') as string,
-        email: formData.get('client_email') as string,
-        phone: formData.get('client_phone') as string || undefined,
-        address: formData.get('client_address') as string || undefined,
+        name: formData.get('client')?.toString() || '',
+        email: formData.get('client_email')?.toString() || '',
+        phone: formData.get('client_phone')?.toString(),
+        address: formData.get('client_address')?.toString(),
       };
       
       const invoice: Invoice = {
@@ -93,15 +93,15 @@ export function CreateInvoiceDialog({ onCreateInvoice }: CreateInvoiceDialogProp
         customer_id: '', // Will be set after customer creation
         amount: calculateTotal(),
         currency,
-        date: formData.get('date') as string,
-        dueDate: formData.get('dueDate') as string,
+        date: formData.get('date')?.toString() || new Date().toISOString(),
+        dueDate: formData.get('dueDate')?.toString() || new Date().toISOString(),
         status: 'pending',
-        notes: formData.get('notes') as string || undefined,
+        notes: formData.get('notes')?.toString(),
         items: items.map(item => ({
           ...item,
           id: uuidv4()
         })),
-        logo_url: logo || undefined
+        logo_url: logo
       };
 
       await onCreateInvoice(invoice, customer);
@@ -243,7 +243,7 @@ export function CreateInvoiceDialog({ onCreateInvoice }: CreateInvoiceDialogProp
             </div>
             
             <div className="space-y-4">
-              {items.map((item, index) => (
+              {items.map((item) => (
                 <div key={item.id} className="grid grid-cols-12 gap-4 items-center">
                   <div className="col-span-6">
                     <Input
